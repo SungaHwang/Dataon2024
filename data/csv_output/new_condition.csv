@@ -1,0 +1,13 @@
+con_code,con_kname,con_ename
+"a","청각기관 증상","Acoustic"
+"b","심혈관계 증상","Cardiovascular"
+"c","소화기계","Digestive"
+"d","안과 증상","Ophthalmology"
+"e","전신종합 증상","General"
+"f","근골격계","Musculoskeletal"
+"g","신경계 증상","Nervous"
+"h","통증 증상","Pain"
+"i","호흡기계 증상","Respiratory"
+"j","피부/외피계 증상","Skin/Integumentary"
+"k","생식기계 증상","Reproductive"
+"l","비뇨기계 증상","Urinary"
