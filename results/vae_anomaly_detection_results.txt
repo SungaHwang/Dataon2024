@@ -1,0 +1,3 @@
+MyFiles/data/anomalydetection/tiger.jpg는 이상치입니다.
+MyFiles/data/anomalydetection/car.jpg는 이상치입니다.
+MyFiles/data/anomalydetection/human.jpg는 이상치입니다.
