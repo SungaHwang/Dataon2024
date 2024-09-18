@@ -7,16 +7,19 @@ import torch.nn.functional as F
 import torch.nn as nn
 import pandas as pd
 
+# MPS 디바이스 설정 (MPS가 없으면 CPU 사용)
+device = torch.device('mps') if torch.has_mps else torch.device('cpu')
+
 # 강아지와 고양이 질병 CSV 파일 경로 (home 디렉토리 기반)
 home_dir = os.path.expanduser('~')
-dog_diseases_csv = os.path.join(home_dir,'workspace', 'MyFiles', 'results', 'Mistral-7B_dog_classified_diseases.csv')
-cat_diseases_csv = os.path.join(home_dir, 'workspace', 'MyFiles', 'results', 'Mistral-7B_cat_classified_diseases.csv')
+dog_diseases_csv = os.path.join(home_dir, 'dataon', 'results', 'Mistral-7B_dog_classified_diseases.csv')
+cat_diseases_csv = os.path.join(home_dir, 'dataon', 'results', 'Mistral-7B_cat_classified_diseases.csv')
 
-dog_disease_details_csv = os.path.join(home_dir, 'workspace', 'MyFiles','csv_output', 'dog_skin_diseases.csv')
-cat_disease_details_csv = os.path.join(home_dir, 'workspace', 'MyFiles','csv_output', 'cat_skin_diseases.csv')
+dog_disease_details_csv = os.path.join(home_dir, 'dataon', 'data','csv_output', 'dog_skin_diseases.csv')
+cat_disease_details_csv = os.path.join(home_dir, 'dataon','data','csv_output', 'cat_skin_diseases.csv')
 
 # 경로 설정
-UPLOAD_FOLDER = os.path.join(home_dir, 'workspace', 'MyFiles','system', 'static', 'uploads')
+UPLOAD_FOLDER = os.path.join(home_dir, 'dataon','system', 'static', 'uploads')
 
 # 필요한 폴더가 없으면 생성
 if not os.path.exists(UPLOAD_FOLDER):
@@ -72,27 +75,31 @@ class FeatureReducer(nn.Module):
         return x.squeeze(0)  # 다시 Batch 차원 제거
 
 # 3. VAE 모델 불러오기
-vae_model_path = os.path.join(home_dir, 'workspace', 'MyFiles','models', 'vae_model.pth')
+vae_model_path = os.path.join(home_dir, 'dataon','models', 'vae_model.pth')
 input_dim = 1000  # VAE 입력 차원
 latent_dim = 128
 vae_model = VAE(input_dim, latent_dim)
-vae_model.load_state_dict(torch.load(vae_model_path))  # VAE 가중치 로드
+vae_model.load_state_dict(torch.load(vae_model_path, map_location=device))  # VAE 가중치를 MPS로 로드
+vae_model.to(device)  # MPS로 모델 이동
 vae_model.eval()
 
 # 4. 차원 축소 모델 (Adaptive Pooling)
-feature_reducer = FeatureReducer(output_dim=1000)  # Inception v4의 특징 벡터를 1000차원으로 줄임
+feature_reducer = FeatureReducer(output_dim=1000)
+feature_reducer.to(device)  # MPS로 이동
 feature_reducer.eval()
 
 # 5. 고양이, 강아지 분류 모델 로드
-cat_model_path = os.path.join(home_dir, 'workspace', 'MyFiles','models', 'classification_cat_inception_v4_model.pth')
-dog_model_path = os.path.join(home_dir, 'workspace', 'MyFiles','models', 'classificationco_dog_inception_v4_model.pth')
+cat_model_path = os.path.join(home_dir, 'dataon','models', 'classification_cat_inception_v4_model.pth')
+dog_model_path = os.path.join(home_dir, 'dataon','models', 'classification_dog_inception_v4_model.pth')
 
 cat_model = timm.create_model('inception_v4', pretrained=False, num_classes=3)
-cat_model.load_state_dict(torch.load(cat_model_path))
+cat_model.load_state_dict(torch.load(cat_model_path, map_location=device))
+cat_model.to(device)
 cat_model.eval()
 
 dog_model = timm.create_model('inception_v4', pretrained=False, num_classes=5)
-dog_model.load_state_dict(torch.load(dog_model_path))
+dog_model.load_state_dict(torch.load(dog_model_path, map_location=device))
+dog_model.to(device)
 dog_model.eval()
 
 # 6. 이미지 전처리
@@ -106,11 +113,11 @@ preprocess = transforms.Compose([
 def extract_and_reduce_features(image_path, model, feature_reducer):
     try:
         img = Image.open(image_path).convert('RGB')
-        img_tensor = preprocess(img).unsqueeze(0)
+        img_tensor = preprocess(img).unsqueeze(0).to(device)
 
         with torch.no_grad():
             features = model.forward_features(img_tensor)  # forward_features로 특징 벡터 추출
-        features = features.flatten().cpu()
+        features = features.flatten().to(device)
 
         # Adaptive Pooling으로 차원을 1000차원으로 줄임
         reduced_features = feature_reducer(features)
@@ -134,7 +141,6 @@ def detect_anomalies(image_path, vae_model, feature_extractor_model, feature_red
     return recon_error > threshold  # 임계값 이상이면 이상치로 판단
 
 # 강아지 분류 클래스 레이블 정의
-
 dog_class_labels = {
     0: "비듬_각질_상피성잔고리 (Dandruff_Keratin_Epithelial Colloid)",
     1: "태선화_과다색소침착 (Lichenification_Hyperpigmentation)",
@@ -153,7 +159,7 @@ cat_class_labels = {
 # 9. 이미지 분류 함수
 def classify_image(image_path, model, class_labels):
     img = Image.open(image_path).convert('RGB')
-    img_tensor = preprocess(img).unsqueeze(0)
+    img_tensor = preprocess(img).unsqueeze(0).to(device)
     
     with torch.no_grad():
         outputs = model(img_tensor)
