@@ -206,50 +206,55 @@ def show_disease_details(selected_disease_name, animal_choice):
     print(f"원인 (Cause): {disease_info['cause'].values[0]}")
     print(f"증상 (Condition): {disease_info['condition'].values[0]}")
     print(f"치료법 (Treatment): {disease_info['treatment'].values[0]}")
-
-# 터미널에서 파일 경로 입력받고 처리하는 함수
+    
+# 세부 질병 리스트 확인
 def main():
-    print("반려동물 피부질환 자가 진단 시스템")
-    print("1. 강아지")
-    print("2. 고양이")
-    animal_choice = input("강아지(1) 또는 고양이(2)를 선택하세요: ")
+    while True:
+        print("\n반려동물 피부질환 자가 진단 시스템")
+        print("1. 강아지")
+        print("2. 고양이")
+        animal_choice = input("강아지(1) 또는 고양이(2)를 선택하세요 (프로그램 종료를 원하면 'exit'을 입력하세요): ")
 
-    if animal_choice not in ['1', '2']:
-        print("잘못된 선택입니다. 프로그램을 종료합니다.")
-        return
+        if animal_choice.lower() == 'exit':
+            print("프로그램을 종료합니다.")
+            break
 
-    image_path = input("이미지 파일 경로를 입력하세요: ")
+        if animal_choice not in ['1', '2']:
+            print("잘못된 선택입니다. 다시 시도하세요.")
+            continue
 
-    if not os.path.exists(image_path):
-        print("파일이 존재하지 않습니다. 프로그램을 종료합니다.")
-        return
+        image_path = input("이미지 파일 경로를 입력하세요: ")
 
-    # 1. 이상 탐지 수행
-    print("이상 탐지를 수행하고 있습니다...")
-    if animal_choice == '1':
-        is_anomaly = detect_anomalies(image_path, vae_model, dog_model, feature_reducer)
-    else:
-        is_anomaly = detect_anomalies(image_path, vae_model, cat_model, feature_reducer)
+        if not os.path.exists(image_path):
+            print("파일이 존재하지 않습니다. 다시 시도하세요.")
+            continue
 
-    if is_anomaly:
-        print("이미지에 이상이 감지되었습니다. 다시 이미지를 업로드해주세요.")
-    else:
-        print("정상 이미지입니다.")
+        # 1. 이상 탐지 수행
+        print("이상 탐지를 수행하고 있습니다...")
+        if animal_choice == '1':
+            is_anomaly = detect_anomalies(image_path, vae_model, dog_model, feature_reducer)
+        else:
+            is_anomaly = detect_anomalies(image_path, vae_model, cat_model, feature_reducer)
 
-    # 2. 분류 수행
-    if animal_choice == '1':
-        predicted_class, predicted_label = classify_image(image_path, dog_model, dog_class_labels)
-        print(f"강아지 피부질환 분류 결과: 클래스 {predicted_class} ({predicted_label})")
-    elif animal_choice == '2':
-        predicted_class, predicted_label = classify_image(image_path, cat_model, cat_class_labels)
-        print(f"고양이 피부질환 분류 결과: 클래스 {predicted_class} ({predicted_label})")
+        if is_anomaly:
+            print("이미지에 이상이 감지되었습니다. 다시 이미지를 업로드해주세요.")
+        else:
+            print("정상 이미지입니다.")
 
-    # 3. 세부 질병 보기 및 상세 정보 제공
-    view_disease = input("세부 질병 보기를 원하시나요? (y/n): ")
-    if view_disease.lower() == 'y':
-        selected_disease = view_disease_list(animal_choice)
-        if selected_disease:
-            show_disease_details(selected_disease, animal_choice)
+        # 2. 분류 수행
+        if animal_choice == '1':
+            predicted_class, predicted_label = classify_image(image_path, dog_model, dog_class_labels)
+            print(f"강아지 피부질환 분류 결과: 클래스 {predicted_class} ({predicted_label})")
+        elif animal_choice == '2':
+            predicted_class, predicted_label = classify_image(image_path, cat_model, cat_class_labels)
+            print(f"고양이 피부질환 분류 결과: 클래스 {predicted_class} ({predicted_label})")
+
+        # 3. 세부 질병 보기 및 상세 정보 제공
+        view_disease = input("세부 질병 보기를 원하시나요? (y/n): ")
+        if view_disease.lower() == 'y':
+            selected_disease = view_disease_list(animal_choice)
+            if selected_disease:
+                show_disease_details(selected_disease, animal_choice)
 
 if __name__ == "__main__":
     main()
