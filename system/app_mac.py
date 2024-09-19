@@ -6,6 +6,8 @@ import timm
 import torch.nn.functional as F
 import torch.nn as nn
 import pandas as pd
+from tqdm import tqdm
+import glob
 
 # MPS 디바이스 설정 (MPS가 없으면 CPU 사용)
 device = torch.device('mps') if torch.has_mps else torch.device('cpu')
@@ -20,10 +22,23 @@ cat_disease_details_csv = os.path.join(home_dir, 'dataon','data','csv_output', '
 
 # 경로 설정
 UPLOAD_FOLDER = os.path.join(home_dir, 'dataon','system', 'static', 'uploads')
-
-# 필요한 폴더가 없으면 생성
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# 6. 강아지 및 고양이 분류 레이블
+dog_class_labels = {
+    0: "비듬_각질_상피성잔고리 (Dandruff_Keratin_Epithelial Colloid)",
+    1: "태선화_과다색소침착 (Lichenification_Hyperpigmentation)",
+    2: "농포_여드름 (Pustules_Acne)",
+    3: "미란_궤양 (Erosion_Ulcer)",
+    4: "결절_종괴 (Nodule_Tumor)"
+}
+
+cat_class_labels = {
+    0: "비듬_각질_상피성잔고리 (Dandruff_Keratin_Epithelial Colloid)",
+    1: "농포_여드름 (Pustules_Acne)",
+    2: "결절_종괴 (Nodule_Tumor)"
+}
 
 # 1. VAE 모델 정의 (1000차원 입력을 기대)
 class VAE(nn.Module):
@@ -63,32 +78,22 @@ class VAE(nn.Module):
         kld = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         return recon_loss + kld
 
-# 2. Adaptive Average Pooling 레이어 추가 (가변 차원 -> 1000차원으로 맞춤)
-class FeatureReducer(nn.Module):
-    def __init__(self, output_dim=1000):
-        super(FeatureReducer, self).__init__()
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(output_dim)  # Adaptive pooling을 사용하여 차원을 맞춤
 
-    def forward(self, x):
-        x = x.unsqueeze(0)  # Batch 차원을 추가
-        x = self.adaptive_pool(x)
-        return x.squeeze(0)  # 다시 Batch 차원 제거
+# 2. 저장된 Inception v4 모델 로드 및 VAE 모델 로드
+model_path = os.path.join(home_dir, 'dataon', 'models', '50000_AnomalyDetection_inception_v4__model.pth')
+model = timm.create_model('inception_v4', pretrained=False)
+model.load_state_dict(torch.load(model_path))
+model.to(device)
+model.eval()
 
-# 3. VAE 모델 불러오기
 vae_model_path = os.path.join(home_dir, 'dataon','models', 'vae_model.pth')
-input_dim = 1000  # VAE 입력 차원
+input_dim = 1000
 latent_dim = 128
-vae_model = VAE(input_dim, latent_dim)
-vae_model.load_state_dict(torch.load(vae_model_path, map_location=device))  # VAE 가중치를 MPS로 로드
-vae_model.to(device)  # MPS로 모델 이동
-vae_model.eval()
+vae = VAE(input_dim, latent_dim)
+vae.load_state_dict(torch.load(vae_model_path, map_location=device))
+vae.to(device)
+vae.eval()
 
-# 4. 차원 축소 모델 (Adaptive Pooling)
-feature_reducer = FeatureReducer(output_dim=1000)
-feature_reducer.to(device)  # MPS로 이동
-feature_reducer.eval()
-
-# 5. 고양이, 강아지 분류 모델 로드
 cat_model_path = os.path.join(home_dir, 'dataon','models', 'classification_cat_inception_v4_model.pth')
 dog_model_path = os.path.join(home_dir, 'dataon','models', 'classification_dog_inception_v4_model.pth')
 
@@ -102,59 +107,37 @@ dog_model.load_state_dict(torch.load(dog_model_path, map_location=device))
 dog_model.to(device)
 dog_model.eval()
 
-# 6. 이미지 전처리
+# 3. 이미지 전처리 함수 (Inception v4에 맞게)
 preprocess = transforms.Compose([
     transforms.Resize((299, 299)),
     transforms.ToTensor(),
-    transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 ])
 
-# 7. Inception v4 모델로부터 특징 벡터 추출 후 차원 축소
-def extract_and_reduce_features(image_path, model, feature_reducer):
+# 4. 이미지 특징 추출 함수
+def extract_features(image_path, model):
     try:
         img = Image.open(image_path).convert('RGB')
         img_tensor = preprocess(img).unsqueeze(0).to(device)
 
         with torch.no_grad():
-            features = model.forward_features(img_tensor)  # forward_features로 특징 벡터 추출
-        features = features.flatten().to(device)
-
-        # Adaptive Pooling으로 차원을 1000차원으로 줄임
-        reduced_features = feature_reducer(features)
-        return reduced_features
+            features = model(img_tensor)
+        features = features.flatten().cpu().numpy()
+        return features
     except Exception as e:
         print(f"Error processing image {image_path}: {e}")
         return None
 
-# 8. VAE 모델 이상 탐지
-def detect_anomalies(image_path, vae_model, feature_extractor_model, feature_reducer, threshold=0.3):
-    # Inception 모델을 사용하여 이미지 특징 벡터 추출 및 차원 축소
-    features = extract_and_reduce_features(image_path, feature_extractor_model, feature_reducer)
-    
-    if features is None:
-        return False
-    
+# 5. 이상 탐지 함수
+def detect_anomalies(image_features, vae_model, threshold=1.3):
+    vae_model.eval()
     with torch.no_grad():
-        recon_features, mu, logvar = vae_model(features)
-        recon_error = F.mse_loss(recon_features, features, reduction='mean').item()
-    
-    return recon_error > threshold  # 임계값 이상이면 이상치로 판단
+        image_tensor = torch.tensor(image_features, dtype=torch.float32).unsqueeze(0).to(device)  # 배치 차원 추가
+        recon_image, _, _ = vae_model(image_tensor)
+        recon_error = F.mse_loss(recon_image, image_tensor, reduction='mean').item()
+        #print(recon_error)
+        return recon_error > threshold  # 재건 오차가 threshold 이상이면 이상치로 간주
 
-# 강아지 분류 클래스 레이블 정의
-dog_class_labels = {
-    0: "비듬_각질_상피성잔고리 (Dandruff_Keratin_Epithelial Colloid)",
-    1: "태선화_과다색소침착 (Lichenification_Hyperpigmentation)",
-    2: "농포_여드름 (Pustules_Acne)",
-    3: "미란_궤양 (Erosion_Ulcer)",
-    4: "결절_종괴 (Nodule_Tumor)"
-}
-
-# 고양이 분류 클래스 레이블 정의
-cat_class_labels = {
-    0: "비듬_각질_상피성잔고리 (Dandruff_Keratin_Epithelial Colloid)",
-    1: "농포_여드름 (Pustules_Acne)",
-    2: "결절_종괴 (Nodule_Tumor)"
-}
 
 # 9. 이미지 분류 함수
 def classify_image(image_path, model, class_labels):
@@ -169,7 +152,8 @@ def classify_image(image_path, model, class_labels):
     predicted_label = class_labels[predicted_class]  # 숫자 레이블을 클래스명으로 변환
     return predicted_class, predicted_label
 
-# 세부 질병 리스트 확인
+
+# 8. 세부 질병 리스트 확인
 def view_disease_list(animal_choice):
     if animal_choice == '1':
         df = pd.read_csv(dog_diseases_csv)
@@ -195,7 +179,7 @@ def view_disease_list(animal_choice):
         else:
             print("잘못된 질병 이름입니다. 다시 입력해주세요.")
 
-# 세부 질병 정보 확인 함수
+# 9. 세부 질병 정보 확인 함수
 def show_disease_details(selected_disease_name, animal_choice):
     if animal_choice == '1':
         df_details = pd.read_csv(dog_disease_details_csv)
@@ -213,7 +197,7 @@ def show_disease_details(selected_disease_name, animal_choice):
     print(f"증상 (Condition): {disease_info['condition'].values[0]}")
     print(f"치료법 (Treatment): {disease_info['treatment'].values[0]}")
 
-# 터미널에서 파일 경로 입력받고 처리하는 함수
+# 10. 메인 함수
 def main():
     while True:
         print("\n반려동물 피부질환 자가 진단 시스템")
@@ -229,23 +213,24 @@ def main():
             print("잘못된 선택입니다. 다시 시도하세요.")
             continue
 
-        image_path = input("이미지 파일 경로를 입력하세요: ")
+        while True:  # 이미지 업로드를 반복할 수 있도록 반복문 추가
+            image_path = input("이미지 파일 경로를 입력하세요: ")
 
-        if not os.path.exists(image_path):
-            print("파일이 존재하지 않습니다. 다시 시도하세요.")
-            continue
+            if not os.path.exists(image_path):
+                print("파일이 존재하지 않습니다. 다시 시도하세요.")
+                continue
 
-        # 1. 이상 탐지 수행
-        print("이상 탐지를 수행하고 있습니다...")
-        if animal_choice == '1':
-            is_anomaly = detect_anomalies(image_path, vae_model, dog_model, feature_reducer)
-        else:
-            is_anomaly = detect_anomalies(image_path, vae_model, cat_model, feature_reducer)
-
-        if is_anomaly:
-            print("이미지에 이상이 감지되었습니다. 다시 이미지를 업로드해주세요.")
-        else:
-            print("정상 이미지입니다.")
+            # 1. 이상 탐지 수행
+            print("이상 탐지를 수행하고 있습니다...")
+            image_features = extract_features(image_path, model)
+            if image_features is not None:
+                is_anomaly = detect_anomalies(image_features, vae)
+                if is_anomaly:
+                    print("이미지에 이상이 감지되었습니다. 다시 이미지를 업로드해주세요.")
+                    continue  # 이상이 감지되면 다시 이미지 업로드로 돌아가도록 continue
+                else:
+                    print("정상 이미지입니다.")
+                    break  # 정상 이미지일 경우 반복문 탈출
 
         # 2. 분류 수행
         if animal_choice == '1':
@@ -262,9 +247,19 @@ def main():
             if selected_disease:
                 show_disease_details(selected_disease, animal_choice)
 
+                # 사용자에게 처음으로 돌아가기 또는 종료 여부를 물어봄
+                next_action = input("처음으로 돌아가시겠습니까? (처음으로 돌아가기: '1', 종료: 'exit'): ")
+
+                if next_action == '1':
+                    continue  # 처음으로 돌아가서 다시 메인 메뉴를 출력
+                elif next_action.lower() == 'exit':
+                    print("프로그램을 종료합니다.")
+                    return  # 프로그램 종료
+            else:
+                continue  # 질병 정보가 없으면 다시 메뉴로 돌아감
+        else:
+            continue  # 사용자가 질병 정보를 보지 않기를 원할 경우 다시 메뉴로 돌아감
+
+
 if __name__ == "__main__":
     main()
-
-
-
-# 이상탐지 손보기
