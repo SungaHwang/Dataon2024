@@ -84,8 +84,8 @@ feature_reducer = FeatureReducer(output_dim=1000)  # Inception v4의 특징 벡�
 feature_reducer.eval()
 
 # 5. 고양이, 강아지 분류 모델 로드
-cat_model_path = os.path.join(home_dir, 'workspace', 'MyFiles','models', 'classification_cat_inception_v4_model.pth')
-dog_model_path = os.path.join(home_dir, 'workspace', 'MyFiles','models', 'classificationco_dog_inception_v4_model.pth')
+dog_disease_details_csv = os.path.join(home_dir, 'workspace', 'MyFiles', 'data', 'csv_output', 'dog_skin_diseases.csv')
+cat_disease_details_csv = os.path.join(home_dir, 'workspace', 'MyFiles', 'data','csv_output', 'cat_skin_diseases.csv')
 
 cat_model = timm.create_model('inception_v4', pretrained=False, num_classes=3)
 cat_model.load_state_dict(torch.load(cat_model_path))
