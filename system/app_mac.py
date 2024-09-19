@@ -127,7 +127,7 @@ def extract_and_reduce_features(image_path, model, feature_reducer):
         return None
 
 # 8. VAE 모델 이상 탐지
-def detect_anomalies(image_path, vae_model, feature_extractor_model, feature_reducer, threshold=0.1):
+def detect_anomalies(image_path, vae_model, feature_extractor_model, feature_reducer, threshold=0.3):
     # Inception 모델을 사용하여 이미지 특징 벡터 추출 및 차원 축소
     features = extract_and_reduce_features(image_path, feature_extractor_model, feature_reducer)
     
@@ -259,3 +259,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# 이상탐지 손보기
+# 최종 확인 후 처음으로 되돌아가는 코드 추가 예정
