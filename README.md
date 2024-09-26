@@ -45,5 +45,8 @@ VAE를 통해 이상치 탐지를 진행하고 이미지 분류를 위한 다양
 ### 5-2) 시스템 실행 방법
 * 시스템 실행을 통하여 프로젝트의 플로우에 맞춘 시스템을 동작할 수 있음
 * python “MyFiles/system/app.py”를 통해 시스템을 실행<br>
-![image](https://github.com/user-attachments/assets/0a89a48d-467b-45b9-b5b6-2da468d02184)
+
+https://github.com/user-attachments/assets/eabfe0ef-adeb-4c38-9e09-a5648843ebc6
+
+
 
