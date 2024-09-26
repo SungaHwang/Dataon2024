@@ -48,5 +48,7 @@ VAE를 통해 이상치 탐지를 진행하고 이미지 분류를 위한 다양
 
 https://github.com/user-attachments/assets/eabfe0ef-adeb-4c38-9e09-a5648843ebc6
 
+https://github.com/user-attachments/assets/8cbcb9fe-7c0d-449a-8e6f-5ad25ece0934
+
 
 
