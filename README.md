@@ -16,8 +16,10 @@
 
 ### 3-1) 시스템 구조
 <img src = "https://github.com/user-attachments/assets/c0d2652d-f548-4953-9b58-22c359c8b61c" width="600"><br>
-VAE를 통해 이상치 탐지를 진행하고 이미지 분류를 위한 다양한 딥러닝 모델(Inception-v4, ConvNeXt-v2 등)을 파인튜닝합니다.
-이를 통하여 최종적으로 반려동물의 피부 사진을 분석하여 질병을 진단하고, Dataon의 동물질병 DB를 통해 관련 정보를 제공하는 구조로 되어 있습니다.
+VAE를 통해 이상치 탐지를 진행하여 반려견과 반려묘가 아닌 사진을 필터링하고,
+입력된 이미지 분류를 위한 다양한 딥러닝 모델(Inception-v4, ConvNeXt-v2 등)을 파인튜닝합니다.
+이를 통하여 반려동물의 피부 사진을 분류하고,
+분류된 카테고리와 유사한 피부질환을 Dataon의 동물질병 DB에서 LLM API를 통해 매칭함으로써 관련 정보를 제공하는 구조로 되어 있습니다.
 
 ### 3-2) 시스템 예시
 <img src = "https://github.com/user-attachments/assets/01a0e659-954d-448f-9a88-5808bbcbaa0a" width="600">
