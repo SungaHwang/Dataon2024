@@ -12,10 +12,11 @@
 * 황성아- 서비스 기획, 데이터 전처리, 피부질환 분류모델 개발, LLM을 통한 질병매칭, 시스템 개발
 
 ## 3. 서비스 알고리즘
-이상치 탐지를 진행하고 이미지 분류를 위한 다양한 딥러닝 모델(Inception-v4, Vision Transformer 등)을 파인튜닝합니다. 이를 통하여 최종적으로 반려동물의 피부 사진을 분석하여 질병을 진단하고, Dataon의 동물질병 DB를 통해 관련 정보를 제공하는 구조로 되어 있습니다.
 
 ### 3-1) 시스템 구조
-<img src = "https://github.com/user-attachments/assets/c0d2652d-f548-4953-9b58-22c359c8b61c" width="600">
+<img src = "https://github.com/user-attachments/assets/c0d2652d-f548-4953-9b58-22c359c8b61c" width="600"><br>
+VAE를 통해 이상치 탐지를 진행하고 이미지 분류를 위한 다양한 딥러닝 모델(Inception-v4, ConvNeXt-v2 등)을 파인튜닝합니다.
+이를 통하여 최종적으로 반려동물의 피부 사진을 분석하여 질병을 진단하고, Dataon의 동물질병 DB를 통해 관련 정보를 제공하는 구조로 되어 있습니다.
 
 ### 3-2) 시스템 예시
 <img src = "https://github.com/user-attachments/assets/01a0e659-954d-448f-9a88-5808bbcbaa0a" width="600">
@@ -28,7 +29,7 @@
 
 ### 4-2) AI-Hub의 반려동물 피부 질환 데이터
 - 링크: https://aihub.or.kr/aihubdata/data/view.do?currMenu=115&topMenu=100&dataSetSn=561
-반려동물(반려견, 반려묘) 10,000마리 이상
+- 반려동물(반려견, 반려묘) 10,000마리 이상
 - 반려견 7종, 반려묘 4종 피부질환으로 판정된 반려동물 질환 이미지
 - 반려동물 이미지 총 500,000장 이상
 - 질환 이미지(구진, 플라크, 비듬, 각질, 태선화, 농포, 여드름, 궤양, 결절 등) 25,000장 이상
@@ -43,6 +44,6 @@
 
 ### 5-2) 시스템 실행 방법
 * 시스템 실행을 통하여 프로젝트의 플로우에 맞춘 시스템을 동작할 수 있음
-* python “MyFiles/system/app.py”를 통해 시스템을 실행
+* python “MyFiles/system/app.py”를 통해 시스템을 실행<br>
 ![image](https://github.com/user-attachments/assets/0a89a48d-467b-45b9-b5b6-2da468d02184)
 
