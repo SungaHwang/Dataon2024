@@ -43,15 +43,15 @@ VAE를 통해 이상치 탐지를 진행하여 반려견과 반려묘가 아닌 
 
 ### 5-2) 기본 설정
 * 터미널 실행
-* pip install –r MyFiles/requirements.txt 명령어를 통해 필요한 라이브러리 설치
+* ```pip install –r MyFiles/requirements.txt``` 명령어를 통해 필요한 라이브러리 설치
 
-### 5-2) 시스템 실행
+### 5-3) 시스템 실행
 * 시스템 실행을 통하여 프로젝트의 플로우에 맞춘 시스템을 동작할 수 있음
-* python “MyFiles/system/app.py”를 통해 시스템을 실행<br>
+* ```python “MyFiles/system/app.py”```를 통해 시스템을 실행<br>
 
 https://github.com/user-attachments/assets/eabfe0ef-adeb-4c38-9e09-a5648843ebc6
 
-### 5-3) 웹 페이지 실행
+### 5-4) 웹 페이지 실행
 https://github.com/user-attachments/assets/8cbcb9fe-7c0d-449a-8e6f-5ad25ece0934
 
 
